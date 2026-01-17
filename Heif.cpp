@@ -1,0 +1,769 @@
+#include <windows.h>
+#include <cmath>
+#define M_PI 3.14159265358979323846
+#pragma comment(lib, "winmm.lib")
+#include <cstdlib>
+#include <windowsx.h>
+using namespace std;
+#define MBR_SIZE 512
+static ULONGLONG n, r;
+int randy() { return n = r, n ^= 0x8ebf635bee3c6d25, n ^= n << 5 | n >> 26, n *= 0xf3e05ca5c43e376b, r = n, n & 0x7fffffff; }
+DWORD xs;
+VOID SeedXorshift32(DWORD dwSeed) {
+    xs = dwSeed;
+}
+DWORD Xorshift32() {
+    xs ^= xs << 13;
+    xs ^= xs << 17;
+    xs ^= xs << 5;
+    return xs;
+}
+typedef union _RGBQUAD {
+    COLORREF rgb;
+    struct {
+        BYTE b;
+        BYTE g;
+        BYTE r;
+        BYTE unused;
+    };
+} *PRGBQUAD;
+int red, green, blue;
+bool ifcolorblue = false, ifblue = false;
+COLORREF Hue(int length) {
+    if (red != length) {
+        red < length; red++;
+        if (ifblue == true) {
+            return RGB(red, 0, length);
+        }
+        else {
+            return RGB(red, 0, 0);
+        }
+    }
+    else {
+        if (green != length) {
+            green < length; green++;
+            return RGB(length, green, 0);
+        }
+        else {
+            if (blue != length) {
+                blue < length; blue++;
+                return RGB(0, length, blue);
+            }
+            else {
+                red = 0; green = 0; blue = 0;
+                ifblue = true;
+            }
+        }
+    }
+}
+VOID WINAPI ci(int x, int y, int w, int h)
+{
+    HDC hdc = GetDC(0);
+    HRGN hrgn = CreateEllipticRgn(x, y, w + x, h + y);
+    SelectClipRgn(hdc, hrgn);
+    BitBlt(hdc, x, y, w, h, hdc, x, y, NOTSRCCOPY);
+    DeleteObject(hrgn);
+    ReleaseDC(NULL, hdc);
+}
+DWORD WINAPI cur(LPVOID lpParam) {
+    POINT cursor;
+    while (1) {
+        HDC hdc = GetDC(HWND_DESKTOP);
+        int icon_x = GetSystemMetrics(SM_CXICON);
+        int icon_y = GetSystemMetrics(SM_CYICON);
+        GetCursorPos(&cursor);
+        DrawIcon(hdc, cursor.x - icon_x, cursor.y - icon_y, LoadIcon(NULL, IDI_INFORMATION));
+        DrawIcon(hdc, cursor.x - icon_x, cursor.y - icon_y, LoadIcon(NULL, IDI_ERROR));
+        ReleaseDC(0, hdc);
+        //Sleep(10);
+    }
+    return(1);
+}
+DWORD WINAPI trianglar(LPVOID lpParam) {
+    while (1) {
+        int w = GetSystemMetrics(0), h = GetSystemMetrics(1);
+        HDC hdc = GetDC(0);
+        HPEN hPen = CreatePen(PS_SOLID, 1, RGB(1, 0, 0));
+        HPEN hOldPen = SelectPen(hdc, hPen);
+
+        HBRUSH hBrush = CreateSolidBrush(RGB(0, 255, 255));
+        HBRUSH hOldBrush = SelectBrush(hdc, hBrush);
+
+        POINT vertices[] = { {rand() % w, rand() % h}, {rand() % w, rand() % h}, {rand() % w, rand() % h} };
+        Polygon(hdc, vertices, sizeof(vertices) / sizeof(vertices[0]));
+
+        SelectBrush(hdc, hOldBrush);
+        DeleteObject(hBrush);
+
+        SelectPen(hdc, hOldPen);
+        DeleteObject(hPen);
+        ReleaseDC(0, hdc);
+    }
+}
+DWORD WINAPI swirl(LPVOID lpParam) {
+
+    while (1) {
+        HDC hdc = GetDC(0);
+        int w = GetSystemMetrics(0);
+        int h = GetSystemMetrics(1);
+        BitBlt(hdc, 0, 0, w, h, hdc, -20, 0, SRCCOPY);
+        BitBlt(hdc, 0, 0, w, h, hdc, w - 20, 0, SRCCOPY);
+        BitBlt(hdc, 0, 0, w, h, hdc, 0, -0, SRCCOPY);
+        BitBlt(hdc, 0, 0, w, h, hdc, 0, h - 0, SRCCOPY);
+        BitBlt(hdc, 0, 0, w, h, hdc, -20, 0, 0x812345);
+        BitBlt(hdc, 0, 0, w, h, hdc, w - 20, 0, 0x812345);
+        BitBlt(hdc, 0, 0, w, h, hdc, 0, -0, 0x812345);
+        BitBlt(hdc, 0, 0, w, h, hdc, 0, h - 0, 0x812345);
+        ReleaseDC(0, hdc);
+        //Sleep(10);
+    }
+}
+DWORD WINAPI shader(LPVOID lpParam) {
+    HDC hdc = GetDC(0);
+    HWND wnd = GetDesktopWindow();
+    int w = GetSystemMetrics(0), h = GetSystemMetrics(1);
+    BITMAPINFO bmp = { 40, w, h, 1, 24 };
+    PRGBTRIPLE rgbtriple;
+    while (true) {
+        hdc = GetDC(0);
+        HDC mdc = CreateCompatibleDC(hdc);
+        HBITMAP hbit = CreateDIBSection(hdc, &bmp, 0, (void**)&rgbtriple, 0, 0);
+        SelectObject(mdc, hbit);
+        BitBlt(mdc, 0, 0, w, h, hdc, 0, 0, SRCCOPY);
+        for (int i = 0; i < w * h; i++) {
+            rgbtriple[i].rgbtRed += 10;
+            rgbtriple[i].rgbtGreen += 10;
+        }
+        BitBlt(hdc, 0, 0, w, h, mdc, 0, 0, SRCCOPY);
+        ReleaseDC(wnd, hdc);
+        DeleteDC(hdc); DeleteDC(mdc); DeleteObject(hbit); DeleteObject(wnd); DeleteObject(rgbtriple); DeleteObject(&w); DeleteObject(&h); DeleteObject(&bmp);
+    }
+}
+DWORD WINAPI RGB2(LPVOID lpParam)
+{
+
+    HWND v3;
+    HBITMAP h;
+    HDC hdcSrc;
+    HDC hdc;
+    void* lpvBits;
+    int nHeight;
+    int nWidth;
+    DWORD v12;
+    int j;
+    int v14;
+    int i;
+    v12 = GetTickCount();
+    nWidth = GetSystemMetrics(0);
+    nHeight = GetSystemMetrics(1);
+    lpvBits = VirtualAlloc(0, 4 * nWidth * (nHeight + 1), 0x3000u, 4u);
+    for (i = 0; ; i = (i + 1) % 2)
+    {
+        hdc = GetDC(0);
+        hdcSrc = CreateCompatibleDC(hdc);
+        h = CreateBitmap(nWidth, nHeight, 1u, 0x20u, lpvBits);
+        SelectObject(hdcSrc, h);
+        BitBlt(hdcSrc, 0, 0, nWidth, nHeight, hdc, 0, 0, 0xCC0020u);
+        GetBitmapBits(h, 4 * nHeight * nWidth, lpvBits);
+        v14 = 0;
+        if (GetTickCount() - v12 > 0xA)
+            rand();
+        for (j = 0; nHeight * nWidth > j; ++j)
+        {
+            if (!(j % nHeight) && !(rand() % 110))
+                v14 = rand() % 24;
+            *((BYTE*)lpvBits + 4 * j + v14) -= 5;
+        }
+        SetBitmapBits(h, 4 * nHeight * nWidth, lpvBits);
+        BitBlt(hdc, 0, 0, nWidth, nHeight, hdcSrc, 0, 0, 0xCC0020u);
+        DeleteObject(h);
+        DeleteObject(hdcSrc);
+        DeleteObject(hdc);
+    }
+}
+DWORD WINAPI textout(LPVOID lpParam)
+{
+    HDC hdc;
+    int sx = 0, sy = 0;
+    LPCWSTR lpText = L"Heif.exe";
+    while (1)
+    {
+        hdc = GetWindowDC(GetDesktopWindow());
+        sx = GetSystemMetrics(0);
+        sy = GetSystemMetrics(1);
+        SetTextColor(hdc, RGB(rand() % 255, rand() % 255, rand() % 255));
+        SetBkColor(hdc, RGB(rand() % 255, rand() % 255, rand() % 255));
+        TextOutW(hdc, rand() % sx, rand() % sy, lpText, wcslen(lpText));
+    }
+}
+DWORD WINAPI icons(LPVOID lpParam) {
+    while (1) {
+        HDC hdc = GetDC(0);
+        int x = rand() % GetSystemMetrics(SM_CXSCREEN);
+        int y = rand() % GetSystemMetrics(SM_CYSCREEN);
+        DrawIcon(hdc, x, y, LoadIcon(0, IDI_APPLICATION));
+        x = rand() % GetSystemMetrics(SM_CXSCREEN);
+        y = rand() % GetSystemMetrics(SM_CYSCREEN);
+        DrawIcon(hdc, x, y, LoadIcon(0, IDI_QUESTION));
+        x = rand() % GetSystemMetrics(SM_CXSCREEN);
+        y = rand() % GetSystemMetrics(SM_CYSCREEN);
+        DrawIcon(hdc, x, y, LoadIcon(0, IDI_INFORMATION));
+        ReleaseDC(0, hdc);
+    }
+}
+VOID WINAPI trainthread(HDC hdc, int w, int h, int xPower, int yPower, DWORD dwRop) {
+    if (xPower >= w) xPower = w - 1; if (yPower >= h) yPower = h - 1;
+    HBITMAP screenshot = CreateCompatibleBitmap(hdc, w, h);
+    HDC hdc2 = CreateCompatibleDC(hdc); rand() % 6;
+    SelectObject(hdc2, screenshot);
+    BitBlt(hdc2, 0, 0, w, h, hdc, 0, 0, SRCCOPY);
+    BitBlt(hdc, xPower > 0 ? xPower : 0, yPower > 0 ? yPower : 0, w - abs(xPower), h - abs(yPower), hdc, xPower < 0 ? -xPower : 0, yPower < 0 ? -yPower : 0, dwRop);
+    BitBlt(hdc, xPower < 0 ? w + xPower : 0, 0, abs(xPower), h, hdc2, xPower > 0 ? w - xPower : 0, 0, dwRop);
+    BitBlt(hdc, 0, yPower < 0 ? h + yPower : 0, w, abs(yPower), hdc2, 0, yPower > 0 ? h - yPower : 0, dwRop);
+    DeleteDC(hdc2); DeleteObject(screenshot);
+}
+DWORD WINAPI shk(LPVOID lpParam) { //Effects by N17Pro3426
+    HDC hdcdc = GetDC(0);
+    int sw = GetSystemMetrics(0), sh = GetSystemMetrics(1);
+    while (1) {
+        hdcdc = GetDC(0);
+        //SelectObject(desk, CreateSolidBrush(RGB(245, 245, 66)));
+        for (int angle = 0; angle < 361; angle++) {
+            int x = 100 * cos(angle * M_PI / 180.F), y = 100 * sin(angle * M_PI / 180.F);
+            trainthread(hdcdc, sw, sh, x, y, SRCCOPY);
+            Sleep(0.5);
+        }
+        ReleaseDC(0, hdcdc);
+    }
+}
+DWORD WINAPI shader3(LPVOID lpParam) {
+    int w = GetSystemMetrics(0), h = GetSystemMetrics(1);
+    _RGBQUAD* data = (_RGBQUAD*)VirtualAlloc(0, (w * h + w) * sizeof(_RGBQUAD), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+    for (int i = 1;; i++, i %= 1) {
+        HDC desk = GetDC(NULL);
+        HDC hdcdc = CreateCompatibleDC(desk);
+        HBITMAP hbm = CreateBitmap(w, h, 1, 32, data);
+        SelectObject(hdcdc, hbm);
+        BitBlt(hdcdc, 1, 1, w, h, desk, 1, 1, SRCCOPY);
+        GetBitmapBits(hbm, w * h * 10, data);
+        for (int i = 1; i < w * h; i++) {
+            int randPixel = Xorshift32() % w;
+            int tempB = GetBValue(data[i].rgb);
+            data[i].rgb = RGB(GetBValue(data[randPixel].rgb), GetBValue(data[randPixel].rgb), GetBValue(data[randPixel].rgb));
+            data[randPixel].rgb = RGB(tempB, tempB, tempB);
+        }
+        SetBitmapBits(hbm, w * h * 10, data);
+        BitBlt(desk, 1, 1, w, h, hdcdc, 1, 1, SRCCOPY);
+        DeleteObject(hbm);
+        DeleteObject(hdcdc);
+        DeleteObject(desk);
+    }
+    return 0;
+}
+DWORD WINAPI darky(LPVOID lpParam) {
+    HDC hdc;
+    int w = GetSystemMetrics(0);
+    int h = GetSystemMetrics(1);
+    while (1) {
+        hdc = GetDC(0);
+        BitBlt(hdc, rand() % 10, rand() % 10, w, h, hdc, rand() % 10, rand() % 10, SRCAND);
+        BitBlt(hdc, rand() % 10, rand() % 10, w, h, hdc, rand() % 10, rand() % 10, SRCCOPY);
+        Sleep(10);
+        ReleaseDC(0, hdc);
+    }
+}
+DWORD WINAPI waves(LPVOID lpParam) {
+    int x = GetSystemMetrics(SM_CXSCREEN);
+    int y = GetSystemMetrics(SM_CYSCREEN);
+    double angle = 0.0;
+    HDC hdc = GetDC(0);
+    HDC mdc = CreateCompatibleDC(hdc);
+    HBITMAP bmp = CreateCompatibleBitmap(hdc, x, y);
+    SelectObject(mdc, bmp);
+
+    while (true) {
+        BitBlt(mdc, 0, 0, x, y, hdc, 0, 0, SRCCOPY);
+
+        for (int i = 0; i < x + y; i++) {
+            BitBlt(hdc, 0, i, x, 1, mdc, sin(angle) * 40, i, SRCCOPY);
+
+            angle += rand() % 5 / 4;
+        }
+
+        Sleep(10);
+    }
+}
+DWORD WINAPI elipse(LPVOID lpParam) {
+    while (1) {
+        HDC hdc = GetDC(0);
+        int x = GetSystemMetrics(0);
+        int y = GetSystemMetrics(1);
+        HBRUSH brush = CreateSolidBrush(RGB(rand() % 255, rand() % 255, rand() % 255));
+        SelectObject(hdc, brush);
+        Pie(hdc, rand() % x, rand() % y, rand() % x, rand() % y, rand() % x, rand() % y, rand() % x, rand() % y);
+        DeleteObject(brush);
+        ReleaseDC(NULL, hdc);
+        Sleep(10);
+    }
+}
+DWORD WINAPI textout1(LPVOID lpParam) {
+    int w = GetSystemMetrics(0), h = GetSystemMetrics(1);
+    int signX = 1;
+    int signY = 1;
+    int signX1 = 1;
+    int signY1 = 1;
+    int incrementor = 10;
+    int x = 10;
+    int y = 10;
+    LPCSTR lpText = "heif.exe";
+    while (1) {
+        HDC hdc = GetDC(0);
+        x += incrementor * signX;
+        y += incrementor * signY;
+        int top_x = 0 + x;
+        int top_y = 0 + y;
+        SetBkMode(hdc, 0);
+        SetTextColor(hdc, Hue(239));
+        //SetBkColor(hdc, RGB(rand() % 255, rand() % 255, rand() % 255));
+        HFONT font = CreateFontA(43, 32, 0, 0, FW_THIN, 0, 1, 0, ANSI_CHARSET, 0, 0, 0, 0, "Shitty house");
+        SelectObject(hdc, font);
+        TextOutA(hdc, top_x, top_y, lpText, strlen(lpText));
+        if (y >= GetSystemMetrics(SM_CYSCREEN))
+        {
+            signY = -1;
+        }
+
+        if (x >= GetSystemMetrics(SM_CXSCREEN))
+        {
+            signX = -1;
+        }
+
+        if (y == 0)
+        {
+            signY = 1;
+        }
+
+        if (x == 0)
+        {
+            signX = 1;
+        }
+        Sleep(4);
+        DeleteObject(font);
+        ReleaseDC(0, hdc);
+    }
+}
+DWORD WINAPI rgb(LPVOID lpParam) {
+    int time = GetTickCount();
+    int w = GetSystemMetrics(0), h = GetSystemMetrics(1);
+    RGBQUAD* data = (RGBQUAD*)VirtualAlloc(0, (w * h + w) * sizeof(RGBQUAD), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+    for (int i = 0;; i++, i %= 3) {
+        HDC desk = GetDC(NULL);
+        HDC hdcdc = CreateCompatibleDC(desk);
+        HBITMAP hbm = CreateBitmap(w, h, 1, 32, data);
+        SelectObject(hdcdc, hbm);
+        BitBlt(hdcdc, 0, 0, w, h, desk, 0, 0, SRCCOPY);
+        GetBitmapBits(hbm, w * h * 4, data);
+        int v = 0;
+        BYTE byte = 0;
+        if ((GetTickCount() - time) > 60000)
+            byte = randy() % 0xff;
+        for (int i = 0; w * h > i; i++) {
+            if (i % h == 0 && randy() % 100 == 0)
+                v = randy() % 50;
+            ((BYTE*)(data + i))[v % 3] += ((BYTE*)(data + i + v))[v] ^ byte;
+        }
+        SetBitmapBits(hbm, w * h * 4, data);
+        BitBlt(desk, 0, 0, w, h, hdcdc, 0, 0, SRCCOPY);
+        DeleteObject(hbm);
+        DeleteObject(hdcdc);
+        DeleteObject(desk);
+    }
+    return 0;
+}
+DWORD WINAPI Rotate(LPVOID lpstart) {
+    HDC hdc = GetDC(0);
+    RECT rekt;
+    POINT rotate[3];
+
+    while (true) {
+        int rnd = 65 + 60;
+
+        for (int i = 0; i < rnd; i += 50) {
+            GetWindowRect(GetDesktopWindow(), &rekt);
+
+            rotate[0].x = rekt.left + i;
+            rotate[0].y = rekt.top - i;
+            rotate[1].x = rekt.right + i;
+            rotate[1].y = rekt.top + i;
+            rotate[2].x = rekt.left - i;
+            rotate[2].y = rekt.bottom - i;
+
+            PlgBlt(hdc, rotate, hdc, 0, 0, rekt.right - rekt.left, rekt.bottom - rekt.top, 0, 0, 0);
+            Sleep(40);
+        }
+    }
+}
+DWORD WINAPI chuchutrain(LPVOID lpParam) {
+    int w = GetSystemMetrics(0);
+    int h = GetSystemMetrics(1);
+    while (1) {
+        HDC hdc = GetDC(0);
+        BitBlt(hdc, -30, 0, w, h, hdc, 0, 0, SRCCOPY);
+        BitBlt(hdc, w - 30, 0, w, h, hdc, 0, 0, SRCCOPY);
+        ReleaseDC(0, hdc);
+        Sleep(10);
+    }
+}
+DWORD WINAPI balls(LPVOID lpParam) {
+    int w = GetSystemMetrics(0), h = GetSystemMetrics(1);
+    int signX = 1;
+    int signY = 1;
+    int signX1 = 1;
+    int signY1 = 1;
+    int incrementor = 10;
+    int x = 10;
+    int y = 10;
+    while (1) {
+        HDC hdc = GetDC(0);
+        int top_x = 0 + x;
+        int top_y = 0 + y;
+        int bottom_x = 100 + x;
+        int bottom_y = 100 + y;
+        x += incrementor * signX;
+        y += incrementor * signY;
+        HBRUSH brush = CreateSolidBrush(Hue(239));
+        SelectObject(hdc, brush);
+        Ellipse(hdc, top_x, top_y, bottom_x, bottom_y);
+        if (y >= GetSystemMetrics(SM_CYSCREEN))
+        {
+            signY = -1;
+        }
+
+        if (x >= GetSystemMetrics(SM_CXSCREEN))
+        {
+            signX = -1;
+        }
+
+        if (y == 0)
+        {
+            signY = 1;
+        }
+
+        if (x == 0)
+        {
+            signX = 1;
+        }
+        Sleep(10);
+        DeleteObject(brush);
+        ReleaseDC(0, hdc);
+    }
+}
+DWORD WINAPI patblt(LPVOID lpParam)
+{
+    while (1) {
+        HDC hdc = GetDC(NULL);
+        int w = GetSystemMetrics(SM_CXSCREEN),
+            h = GetSystemMetrics(SM_CYSCREEN);
+
+        HBRUSH brush = CreateSolidBrush(RGB(rand() % 255, rand() % 255, rand() % 255));
+        SelectObject(hdc, brush);
+        PatBlt(hdc, 0, 0, w, h, PATINVERT);
+        DeleteObject(brush);
+        ReleaseDC(NULL, hdc);
+    }
+}
+DWORD WINAPI cubes(LPVOID lpParam) {
+    while (1) {
+        HDC hdc = GetDC(0);
+        int x = GetSystemMetrics(0);
+        int y = GetSystemMetrics(1);
+        SetStretchBltMode(hdc, HALFTONE);
+        StretchBlt(hdc, -10, -10, x + 20, y + 20, hdc, 0, 0, x, y, SRCCOPY);
+        StretchBlt(hdc, 10, 10, x - 20, y - 20, hdc, 0, 0, x, y, SRCCOPY);
+        ReleaseDC(0, hdc);
+    }
+}
+DWORD WINAPI textout2(LPVOID lpParam)
+{
+    HDC hdc;
+    int sx = 0, sy = 0;
+    LPCWSTR lpText = L"Heif.exe";
+    while (1)
+    {
+        hdc = GetWindowDC(GetDesktopWindow());
+        sx = GetSystemMetrics(0);
+        sy = GetSystemMetrics(1);
+        SetTextColor(hdc, RGB(rand() % 255, rand() % 255, rand() % 255));
+        SetBkColor(hdc, RGB(rand() % 255, rand() % 255, rand() % 255));
+        TextOutW(hdc, rand() % sx, rand() % sy, lpText, wcslen(lpText));
+    }
+}
+DWORD WINAPI icons2(LPVOID lpParam) {
+    while (1) {
+        HDC hdc = GetDC(0);
+        int x = rand() % GetSystemMetrics(SM_CXSCREEN);
+        int y = rand() % GetSystemMetrics(SM_CYSCREEN);
+        DrawIcon(hdc, x, y, LoadIcon(0, IDI_ERROR));
+        x = rand() % GetSystemMetrics(SM_CXSCREEN);
+        y = rand() % GetSystemMetrics(SM_CYSCREEN);
+        DrawIcon(hdc, x, y, LoadIcon(0, IDI_WARNING));
+        x = rand() % GetSystemMetrics(SM_CXSCREEN);
+        y = rand() % GetSystemMetrics(SM_CYSCREEN);
+        DrawIcon(hdc, x, y, LoadIcon(0, IDI_APPLICATION));
+        x = rand() % GetSystemMetrics(SM_CXSCREEN);
+        y = rand() % GetSystemMetrics(SM_CYSCREEN);
+        DrawIcon(hdc, x, y, LoadIcon(0, IDI_QUESTION));
+        x = rand() % GetSystemMetrics(SM_CXSCREEN);
+        y = rand() % GetSystemMetrics(SM_CYSCREEN);
+        DrawIcon(hdc, x, y, LoadIcon(0, IDI_INFORMATION));
+        ReleaseDC(0, hdc);
+    }
+}
+VOID WINAPI sound1() {
+    HWAVEOUT hWaveOut = 0;
+    WAVEFORMATEX wfx = { WAVE_FORMAT_PCM, 1, 8000, 8000, 1, 8, 0 };
+    waveOutOpen(&hWaveOut, WAVE_MAPPER, &wfx, 0, 0, CALLBACK_NULL);
+    char buffer[8000 * 30] = {};
+    for (DWORD t = 0; t < sizeof(buffer); ++t)
+        buffer[t] = static_cast<char>(t & t % 255) - (t * 3 & t >> 13 & t >> 6);
+
+    WAVEHDR header = { buffer, sizeof(buffer), 0, 0, 0, 0, 0, 0 };
+    waveOutPrepareHeader(hWaveOut, &header, sizeof(WAVEHDR));
+    waveOutWrite(hWaveOut, &header, sizeof(WAVEHDR));
+    waveOutUnprepareHeader(hWaveOut, &header, sizeof(WAVEHDR));
+    waveOutClose(hWaveOut);
+}
+
+VOID WINAPI sound2() {
+    HWAVEOUT hWaveOut = 0;
+    WAVEFORMATEX wfx = { WAVE_FORMAT_PCM, 1, 8000, 8000, 1, 8, 0 };
+    waveOutOpen(&hWaveOut, WAVE_MAPPER, &wfx, 0, 0, CALLBACK_NULL);
+    char buffer[8000 * 30] = {};
+    for (DWORD t = 0; t < sizeof(buffer); ++t)
+        buffer[t] = static_cast<char>(t >> 9 ^ (t >> 9) - 1 ^ 1) % 13 * t;
+
+    WAVEHDR header = { buffer, sizeof(buffer), 0, 0, 0, 0, 0, 0 };
+    waveOutPrepareHeader(hWaveOut, &header, sizeof(WAVEHDR));
+    waveOutWrite(hWaveOut, &header, sizeof(WAVEHDR));
+    waveOutUnprepareHeader(hWaveOut, &header, sizeof(WAVEHDR));
+    waveOutClose(hWaveOut);
+}
+
+VOID WINAPI sound3() {
+    HWAVEOUT hWaveOut = 0;
+    WAVEFORMATEX wfx = { WAVE_FORMAT_PCM, 1, 8000, 8000, 1, 8, 0 };
+    waveOutOpen(&hWaveOut, WAVE_MAPPER, &wfx, 0, 0, CALLBACK_NULL);
+    char buffer[8000 * 30] = {};
+    for (DWORD t = 0; t < sizeof(buffer); ++t)
+        buffer[t] = static_cast<char>(64 * (t >> 3 | t >> 4 | t >> 9) + (t >> 11 & t << 2) ^ 2 * (t >> 16 | t | t >> 7) + 32 * (t >> t & 32) | t >> 7);
+
+    WAVEHDR header = { buffer, sizeof(buffer), 0, 0, 0, 0, 0, 0 };
+    waveOutPrepareHeader(hWaveOut, &header, sizeof(WAVEHDR));
+    waveOutWrite(hWaveOut, &header, sizeof(WAVEHDR));
+    waveOutUnprepareHeader(hWaveOut, &header, sizeof(WAVEHDR));
+    waveOutClose(hWaveOut);
+}
+
+VOID WINAPI sound4() {
+    HWAVEOUT hWaveOut = 0;
+    WAVEFORMATEX wfx = { WAVE_FORMAT_PCM, 1, 8000, 8000, 1, 8, 0 };
+    waveOutOpen(&hWaveOut, WAVE_MAPPER, &wfx, 0, 0, CALLBACK_NULL);
+    char buffer[8000 * 30] = {};
+    for (DWORD t = 0; t < sizeof(buffer); ++t)
+        buffer[t] = static_cast<char>(t | t % 255 | t % 257);
+
+    WAVEHDR header = { buffer, sizeof(buffer), 0, 0, 0, 0, 0, 0 };
+    waveOutPrepareHeader(hWaveOut, &header, sizeof(WAVEHDR));
+    waveOutWrite(hWaveOut, &header, sizeof(WAVEHDR));
+    waveOutUnprepareHeader(hWaveOut, &header, sizeof(WAVEHDR));
+    waveOutClose(hWaveOut);
+}
+
+VOID WINAPI sound5() {
+    HWAVEOUT hWaveOut = 0;
+    WAVEFORMATEX wfx = { WAVE_FORMAT_PCM, 1, 8000, 8000, 1, 8, 0 };
+    waveOutOpen(&hWaveOut, WAVE_MAPPER, &wfx, 0, 0, CALLBACK_NULL);
+    char buffer[8000 * 30] = {};
+    for (DWORD t = 0; t < sizeof(buffer); ++t)
+        buffer[t] = static_cast<char>(t >> 5 | t << 4 | t & 1023 ^ 1981 | t - 67 >> 4);
+
+    WAVEHDR header = { buffer, sizeof(buffer), 0, 0, 0, 0, 0, 0 };
+    waveOutPrepareHeader(hWaveOut, &header, sizeof(WAVEHDR));
+    waveOutWrite(hWaveOut, &header, sizeof(WAVEHDR));
+    waveOutUnprepareHeader(hWaveOut, &header, sizeof(WAVEHDR));
+    waveOutClose(hWaveOut);
+}
+VOID WINAPI sound6() {
+    HWAVEOUT hWaveOut = 0;
+    WAVEFORMATEX wfx = { WAVE_FORMAT_PCM, 1, 16000, 16000, 1, 8, 0 };
+    waveOutOpen(&hWaveOut, WAVE_MAPPER, &wfx, 0, 0, CALLBACK_NULL);
+    char buffer[16000 * 30] = {};
+    for (DWORD t = 0; t < sizeof(buffer); ++t)
+        buffer[t] = static_cast<char>(10 * (t >> 6 | t | t >> (t >> 16)) + (7 & t >> 11));
+
+    WAVEHDR header = { buffer, sizeof(buffer), 0, 0, 0, 0, 0, 0 };
+    waveOutPrepareHeader(hWaveOut, &header, sizeof(WAVEHDR));
+    waveOutWrite(hWaveOut, &header, sizeof(WAVEHDR));
+    waveOutUnprepareHeader(hWaveOut, &header, sizeof(WAVEHDR));
+    waveOutClose(hWaveOut);
+}
+VOID WINAPI sound7() {
+    HWAVEOUT hWaveOut = 0;
+    WAVEFORMATEX wfx = { WAVE_FORMAT_PCM, 1, 8000, 8000, 1, 8, 0 };
+    waveOutOpen(&hWaveOut, WAVE_MAPPER, &wfx, 0, 0, CALLBACK_NULL);
+    char buffer[8000 * 30] = {};
+    for (DWORD t = 0; t < sizeof(buffer); ++t)
+        buffer[t] = static_cast<char>(t * (4 | t >> 13 & 3) >> (~t >> 11 & 1) & 128 | t * (t >> 11 & t >> 13) * (~t >> 9 & 3) & 127);
+
+    WAVEHDR header = { buffer, sizeof(buffer), 0, 0, 0, 0, 0, 0 };
+    waveOutPrepareHeader(hWaveOut, &header, sizeof(WAVEHDR));
+    waveOutWrite(hWaveOut, &header, sizeof(WAVEHDR));
+    waveOutUnprepareHeader(hWaveOut, &header, sizeof(WAVEHDR));
+    waveOutClose(hWaveOut);
+}
+VOID WINAPI sound8() {
+    HWAVEOUT hWaveOut = 0;
+    WAVEFORMATEX wfx = { WAVE_FORMAT_PCM, 1, 8000, 8000, 1, 8, 0 };
+    waveOutOpen(&hWaveOut, WAVE_MAPPER, &wfx, 0, 0, CALLBACK_NULL);
+    char buffer[8000 * 30] = {};
+    for (DWORD t = 0; t < sizeof(buffer); ++t)
+        buffer[t] = static_cast<char>(9 * t & t >> 4 | 5 * t & t >> 7 | (3 * t & t >> 10) - 1);
+
+    WAVEHDR header = { buffer, sizeof(buffer), 0, 0, 0, 0, 0, 0 };
+    waveOutPrepareHeader(hWaveOut, &header, sizeof(WAVEHDR));
+    waveOutWrite(hWaveOut, &header, sizeof(WAVEHDR));
+    waveOutUnprepareHeader(hWaveOut, &header, sizeof(WAVEHDR));
+    waveOutClose(hWaveOut);
+}
+VOID WINAPI sound9() {
+    HWAVEOUT hWaveOut = 0;
+    WAVEFORMATEX wfx = { WAVE_FORMAT_PCM, 1, 8000, 8000, 1, 8, 0 };
+    waveOutOpen(&hWaveOut, WAVE_MAPPER, &wfx, 0, 0, CALLBACK_NULL);
+    char buffer[8000 * 30] = {};
+    for (DWORD t = 0; t < sizeof(buffer); ++t)
+        buffer[t] = static_cast<char>(t * ((t & 4096 ? t % 65536 < 59392 ? 7 : t & 7 : 16) + (1 & t >> 14)) >> (3 & t >> (t & 2048 ? 2 : 10)) | t >> (t & 16384 ? t & 4096 ? 10 : 3 : 2) + t & t >> 8 + t ^ t >> 2 + t & t >> 23 + t | t >> 26);
+
+    WAVEHDR header = { buffer, sizeof(buffer), 0, 0, 0, 0, 0, 0 };
+    waveOutPrepareHeader(hWaveOut, &header, sizeof(WAVEHDR));
+    waveOutWrite(hWaveOut, &header, sizeof(WAVEHDR));
+    waveOutUnprepareHeader(hWaveOut, &header, sizeof(WAVEHDR));
+    waveOutClose(hWaveOut);
+}
+
+int main() {
+
+    FreeConsole();
+
+    if (MessageBoxW(NULL, L"Do you want to run GDI malware?", L"Heif.exe", MB_YESNO | MB_ICONEXCLAMATION) == IDNO)
+
+        ExitProcess(0);
+
+    else
+    {
+        if (MessageBoxW(NULL, L"Are you sure you want it?", L"Heif.exe", MB_YESNO | MB_ICONEXCLAMATION) == IDNO)
+        {
+            ExitProcess(0);
+        }
+
+        else {
+            HANDLE thread1 = CreateThread(0, 0, cur, 0, 0, 0);
+            HANDLE thread2 = CreateThread(0, 0, shader, 0, 0, 0);
+            HANDLE thread2dot = CreateThread(0, 0, swirl, 0, 0, 0);
+            HANDLE thread2dot2 = CreateThread(0, 0, trianglar, 0, 0, 0);
+            sound1();
+            Sleep(30000);
+            TerminateThread(thread2, 0);
+            CloseHandle(thread2);
+            TerminateThread(thread2dot, 0);
+            CloseHandle(thread2dot);
+            TerminateThread(thread2dot2, 0);
+            CloseHandle(thread2dot2);
+            InvalidateRect(0, 0, 0);
+            Sleep(90);
+            HANDLE thread3 = CreateThread(0, 0, RGB2, 0, 0, 0);
+            HANDLE thread3dot = CreateThread(0, 0, textout, 0, 0, 0);
+            HANDLE thread3dot2 = CreateThread(0, 0, icons, 0, 0, 0);
+            sound2();
+            Sleep(30000);
+            TerminateThread(thread3, 0);
+            CloseHandle(thread3);
+            TerminateThread(thread3dot, 0);
+            CloseHandle(thread3dot);
+            TerminateThread(thread3dot2, 0);
+            CloseHandle(thread3dot2);
+            InvalidateRect(0, 0, 0);
+            Sleep(90);
+            HANDLE thread4 = CreateThread(0, 0, shk, 0, 0, 0);
+            HANDLE thread4dot = CreateThread(0, 0, shader3, 0, 0, 0);
+            sound3();
+            Sleep(30000);
+            TerminateThread(thread4, 0);
+            CloseHandle(thread4);
+            TerminateThread(thread4dot, 0);
+            CloseHandle(thread4dot);
+            InvalidateRect(0, 0, 0);
+            Sleep(90);
+            HANDLE thread5 = CreateThread(0, 0, darky, 0, 0, 0);
+            sound4();
+            Sleep(30000);
+            TerminateThread(thread5, 0);
+            CloseHandle(thread5);
+            InvalidateRect(0, 0, 0);
+            Sleep(90);
+            HANDLE thread6 = CreateThread(0, 0, elipse, 0, 0, 0);
+            HANDLE thread6dot = CreateThread(0, 0, waves, 0, 0, 0);
+            sound5();
+            Sleep(30000);
+            TerminateThread(thread6, 0);
+            CloseHandle(thread6);
+            TerminateThread(thread6dot, 0);
+            CloseHandle(thread6dot);
+            InvalidateRect(0, 0, 0);
+            Sleep(90);
+            HANDLE thread7 = CreateThread(0, 0, rgb, 0, 0, 0);
+            HANDLE thread7dot = CreateThread(0, 0, textout1, 0, 0, 0);
+            sound6();
+            Sleep(30000);
+            TerminateThread(thread7, 0);
+            CloseHandle(thread7);
+            TerminateThread(thread7dot, 0);
+            CloseHandle(thread7dot);
+            InvalidateRect(0, 0, 0);
+            Sleep(90);
+            HANDLE thread8 = CreateThread(0, 0, Rotate, 0, 0, 0);
+            sound7();
+            Sleep(30000);
+            TerminateThread(thread8, 0);
+            CloseHandle(thread8);
+            InvalidateRect(0, 0, 0);
+            Sleep(90);
+            HANDLE thread9 = CreateThread(0, 0, chuchutrain, 0, 0, 0);
+            HANDLE thread9dot = CreateThread(0, 0, balls, 0, 0, 0);
+            sound8();
+            Sleep(30000);
+            TerminateThread(thread9, 0);
+            CloseHandle(thread9);
+            TerminateThread(thread9dot, 0);
+            CloseHandle(thread9dot);
+            InvalidateRect(0, 0, 0);
+            Sleep(90);
+            HANDLE thread10 = CreateThread(0, 0, patblt, 0, 0, 0);
+            HANDLE thread10dot = CreateThread(0, 0, cubes, 0, 0, 0);
+            HANDLE thread10dot2 = CreateThread(0, 0, textout2, 0, 0, 0);
+            HANDLE thread10dot3 = CreateThread(0, 0, icons2, 0, 0, 0);
+            sound9();
+            Sleep(30000);
+            TerminateThread(thread10, 0);
+            CloseHandle(thread10);
+            TerminateThread(thread10dot, 0);
+            CloseHandle(thread10dot);
+            TerminateThread(thread10dot2, 0);
+            CloseHandle(thread10dot2);
+            TerminateThread(thread10dot3, 0);
+            CloseHandle(thread10dot3);
+            InvalidateRect(0, 0, 0);
+            return 0;
+        }
+    }
+}
+
